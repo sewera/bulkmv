@@ -47,3 +47,5 @@ fn os_err<T>(err: io::Error) -> T {
     eprintln!("error: {}", err.to_string());
     process::exit(2);
 }
+
+// TODO: Create a test for printing directory items
