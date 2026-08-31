@@ -4,8 +4,8 @@ version = "0.0.1"
 description = "Bulk move files by editing their paths in a file"
 authors = ["sewera"]
 license = "MIT"
-edition = "2024"
-rust-version = "1.93.0"
+edition = "2021"
+rust-version = "1.78.0"
 
 [[bin]]
 name = "bulkmv"
