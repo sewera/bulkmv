@@ -6,6 +6,7 @@ authors = ["sewera"]
 license = "MIT"
 edition = "2021"
 rust-version = "1.78.0"
+default-run = "bulkmv"
 
 [[bin]]
 name = "bulkmv"
