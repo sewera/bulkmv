@@ -13,4 +13,4 @@ path = "src/main.rs"
 
 [[bin]]
 name = "mockedit"
-path = "testutil/mockedit/main.rs"
+path = "testutil/mockedit.rs"
