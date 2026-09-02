@@ -31,11 +31,39 @@ fn main() {
 }
 
 fn open_editor(file_path: &str) {
-    let editor = env::var("EDITOR").unwrap_or_else(|_| "vi".to_string());
-    process::Command::new(editor)
+    let editor_cmd = env::var("EDITOR").unwrap_or(String::new());
+    let (cmd, args) = parse_command(editor_cmd);
+    let exit_status = process::Command::new(cmd)
+        .args(args)
         .arg(file_path)
         .status()
         .unwrap_or_else(os_err);
+
+    if !exit_status.success() {
+        eprintln!("error: editor exited with {}", exit_status);
+        process::exit(1);
+    }
+}
+
+fn parse_command(cmdline: String) -> (String, Vec<String>) {
+    const DEFAULT_EDITOR: &'static str = "vi";
+
+    if cmdline.is_empty() {
+        return (DEFAULT_EDITOR.to_owned(), Vec::new());
+    }
+
+    let elements: Vec<_> = cmdline.split_whitespace().collect();
+    if elements.is_empty() {
+        return (DEFAULT_EDITOR.to_owned(), Vec::new());
+    } else if elements.len() == 1 {
+        return (cmdline, Vec::new());
+    }
+
+    let (cmd, args) = elements.split_first().unwrap();
+    let cmd_str: String = str::parse(cmd).unwrap();
+    let args_str_vec: Vec<String> = args.to_vec().iter().map(|s| s.to_string()).collect();
+
+    (cmd_str, args_str_vec)
 }
 
 fn rename_files(current_items: &Vec<String>, items_to_rename: &Vec<String>) {
