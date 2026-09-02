@@ -1,74 +1,16 @@
-use std::{env, fmt, fs, io, process};
+use std::{env, fmt, fs, process};
 
 fn main() {
-    let args: Vec<_> = env::args().collect();
-    validate_args(&args);
-    let config = parse_args(&args);
-    println!("mockedit: config: {}", config);
-
-    let temp_file_content = read_temp_file(&config.temp_file);
-    println!("mockedit: old temp file content: |\n{}", &temp_file_content);
-
-    let new_temp_file_content = make_filename_changes(temp_file_content, &config.renames);
-    println!(
-        "mockedit: new temp file content: |\n{}",
-        &new_temp_file_content
-    );
-
-    write_temp_file(&config.temp_file, new_temp_file_content);
-
+    let config = parse_args();
+    edit_temp_file(config);
     println!("mockedit: ok");
     process::exit(0);
 }
 
-fn write_temp_file(temp_file: &String, new_temp_file_content: String) {
-    fs::write(temp_file, new_temp_file_content).unwrap_or_else(os_err);
-}
-
-fn make_filename_changes(temp_file_content: String, renames: &Vec<Rename>) -> String {
-    let mut available_renames = renames.clone();
-    temp_file_content
-        .lines()
-        .map(|line| map_line(line, &mut available_renames))
-        .collect::<Vec<String>>()
-        .join("\n")
-}
-
-fn map_line(line: &str, available_renames: &mut Vec<Rename>) -> String {
-    let found = available_renames.iter().position(|r| r.current == line);
-    if found.is_none() {
-        return line.to_string();
-    }
-    let found = found.unwrap();
-    let renamed = available_renames[found].target.clone();
-    available_renames.remove(found);
-    renamed
-}
-
-fn validate_args(args: &Vec<String>) {
-    if args.len() < 2 || args.len() % 2 != 0 {
-        eprintln!("mockedit: invalid argument count: {}", args.len());
-        eprintln!(
-            "mockedit: usage: {} [(<filename> <filename_renamed> )*] <temp_file>",
-            args.first().unwrap()
-        );
-        process::exit(1);
-    }
-}
-
-fn parse_args(args: &Vec<String>) -> Config {
-    let temp_file = args.last().unwrap().clone();
-    let rename_pairs = args[1..args.len() - 1].to_vec();
-
-    let renames: Vec<_> = rename_pairs
-        .windows(2)
-        .map(|pair| Rename {
-            current: pair[0].clone(),
-            target: pair[1].clone(),
-        })
-        .collect();
-
-    Config { temp_file, renames }
+fn edit_temp_file(config: Config) {
+    let temp_file_content = read_temp_file(&config.temp_file);
+    let new_temp_file_content = change_filenames(temp_file_content, &config.renames);
+    write_temp_file(&config.temp_file, new_temp_file_content);
 }
 
 #[derive(Clone)]
@@ -95,11 +37,69 @@ struct Rename {
     target: String,
 }
 
-fn read_temp_file(temp_file: &String) -> String {
-    fs::read_to_string(temp_file).unwrap_or_else(os_err)
+fn parse_args() -> Config {
+    let args = env::args().collect();
+    validate_args(&args);
+    let temp_file = args.last().unwrap().clone();
+    let rename_pairs = args[1..args.len() - 1].to_vec();
+
+    let renames: Vec<_> = rename_pairs
+        .windows(2)
+        .map(|pair| Rename {
+            current: pair[0].clone(),
+            target: pair[1].clone(),
+        })
+        .collect();
+
+    let config = Config { temp_file, renames };
+    println!("mockedit: config: {}", config);
+    config
 }
 
-fn os_err<T>(err: io::Error) -> T {
-    eprintln!("error: {}", err.to_string());
-    process::exit(2);
+fn validate_args(args: &Vec<String>) {
+    if args.len() < 2 || args.len() % 2 != 0 {
+        eprintln!("mockedit: invalid argument count: {}", args.len());
+        eprintln!(
+            "mockedit: usage: {} [(<filename> <filename_renamed> )*] <temp_file>",
+            args.first().unwrap()
+        );
+        process::exit(1);
+    }
+}
+
+fn read_temp_file(temp_file: &String) -> String {
+    let temp_file_content = fs::read_to_string(temp_file).unwrap();
+    println!(
+        "mockedit: old temp file content: |\n{}\nEOF",
+        temp_file_content
+    );
+    temp_file_content
+}
+
+fn change_filenames(temp_file_content: String, renames: &Vec<Rename>) -> String {
+    let mut available_renames = renames.clone();
+    temp_file_content
+        .lines()
+        .map(|line| map_line(line, &mut available_renames))
+        .collect::<Vec<String>>()
+        .join("\n")
+}
+
+fn map_line(line: &str, available_renames: &mut Vec<Rename>) -> String {
+    let found = available_renames.iter().position(|r| r.current == line);
+    if found.is_none() {
+        return line.to_string();
+    }
+    let found = found.unwrap();
+    let renamed = available_renames[found].target.clone();
+    available_renames.remove(found);
+    renamed
+}
+
+fn write_temp_file(temp_file: &String, new_temp_file_content: String) {
+    println!(
+        "mockedit: new temp file content: |\n{}\nEOF",
+        new_temp_file_content
+    );
+    fs::write(temp_file, new_temp_file_content).unwrap();
 }
