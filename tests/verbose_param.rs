@@ -6,7 +6,7 @@ const TEST_FILE_NAME_RENAMED: &'static str = "file2";
 const TEST_FILE_CONTENT: &'static str = "file1 test content";
 
 #[test]
-fn rename_one_file() {
+fn quiet_output() {
     // given
     let test_name = "rename_one_file";
     let files = vec![test::File {
@@ -21,12 +21,8 @@ fn rename_one_file() {
     let args = vec!["."];
 
     // when
-    test::bulkmv(args, renames);
+    let output = test::bulkmv_stdout(args, renames);
 
     // then
-    let files = test::get_dir_items(".");
-    assert_eq!(files, vec![TEST_FILE_NAME_RENAMED]);
-
-    let file_content = test::get_file_content(TEST_FILE_NAME_RENAMED);
-    assert_eq!(file_content, TEST_FILE_CONTENT);
+    assert_eq!(output.trim(), "");
 }

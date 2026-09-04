@@ -3,7 +3,7 @@ use std::{env, fmt, fs, process};
 fn main() {
     let config = parse_args();
     edit_temp_file(config);
-    println!("mockedit: ok");
+    eprintln!("mockedit: ok");
     process::exit(0);
 }
 
@@ -52,7 +52,7 @@ fn parse_args() -> Config {
         .collect();
 
     let config = Config { temp_file, renames };
-    println!("mockedit: config: {}", config);
+    eprintln!("mockedit: config: {}", config);
     config
 }
 
@@ -69,7 +69,7 @@ fn validate_args(args: &Vec<String>) {
 
 fn read_temp_file(temp_file: &String) -> String {
     let temp_file_content = fs::read_to_string(temp_file).unwrap();
-    println!(
+    eprintln!(
         "mockedit: old temp file content: |\n{}\nEOF",
         temp_file_content
     );
@@ -97,7 +97,7 @@ fn map_line(line: &str, available_renames: &mut Vec<Rename>) -> String {
 }
 
 fn write_temp_file(temp_file: &String, new_temp_file_content: String) {
-    println!(
+    eprintln!(
         "mockedit: new temp file content: |\n{}\nEOF",
         new_temp_file_content
     );
