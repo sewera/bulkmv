@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use std::{env, fs, path, process, str};
 
 const TESTDATA_DIRNAME: &'static str = "testdata";
