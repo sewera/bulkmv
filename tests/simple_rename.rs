@@ -21,12 +21,12 @@ fn rename_one_file() {
     let args = vec!["."];
 
     // when
-    test::bulkmv(args, renames);
+    test::bulkmv(test_name, args, renames);
 
     // then
-    let files = test::get_dir_items(".");
+    let files = test::get_dir_items(test_name);
     assert_eq!(files, vec![TEST_FILE_NAME_RENAMED]);
 
-    let file_content = test::get_file_content(TEST_FILE_NAME_RENAMED);
+    let file_content = test::get_file_content(test_name, TEST_FILE_NAME_RENAMED);
     assert_eq!(file_content, TEST_FILE_CONTENT);
 }

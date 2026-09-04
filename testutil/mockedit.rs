@@ -68,7 +68,14 @@ fn validate_args(args: &Vec<String>) {
 }
 
 fn read_temp_file(temp_file: &String) -> String {
-    let temp_file_content = fs::read_to_string(temp_file).unwrap();
+    let temp_file_content = fs::read_to_string(temp_file).unwrap_or_else(|err| {
+        eprintln!(
+            "mockedit: current working directory: {}",
+            env::current_dir().unwrap().to_string_lossy()
+        );
+        eprintln!("mockedit: read_temp_file: {}: {}", temp_file, err);
+        process::exit(err.raw_os_error().unwrap_or(1));
+    });
     eprintln!(
         "mockedit: old temp file content: |\n{}\nEOF",
         temp_file_content

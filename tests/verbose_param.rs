@@ -21,7 +21,7 @@ fn quiet_output() {
     let args = vec!["."];
 
     // when
-    let output = test::bulkmv_stdout(args, renames);
+    let output = test::bulkmv_stdout(test_name, args, renames);
 
     // then
     assert_eq!(output.trim(), "");
@@ -43,7 +43,7 @@ fn verbose_output_param_before_dir() {
     let args = vec!["-v", "."];
 
     // when
-    let output = test::bulkmv_stdout(args, renames);
+    let output = test::bulkmv_stdout(test_name, args, renames);
 
     // then
     assert_eq!(
@@ -68,7 +68,7 @@ fn verbose_output_param_after_dir() {
     let args = vec![".", "-v"];
 
     // when
-    let output = test::bulkmv_stdout(args, renames);
+    let output = test::bulkmv_stdout(test_name, args, renames);
 
     // then
     assert_eq!(

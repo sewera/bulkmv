@@ -9,7 +9,6 @@ pub(crate) fn init(test_name: &str, files_to_create: Vec<File>) {
     files_to_create
         .iter()
         .for_each(|file| make_test_file(&test_dir, file.name, file.content));
-    set_working_directory(&test_dir);
 }
 
 pub(crate) struct File<'a> {
@@ -37,12 +36,8 @@ pub(crate) fn make_test_file(test_dir: &path::PathBuf, filename: &str, file_cont
     fs::write(test_file_path, file_content).unwrap();
 }
 
-fn set_working_directory(test_dir: &path::PathBuf) {
-    env::set_current_dir(test_dir).unwrap();
-}
-
-pub(crate) fn bulkmv(args: Vec<&str>, mockedit_renames: Vec<Rename>) {
-    let output = run_bulkmv(args, mockedit_renames);
+pub(crate) fn bulkmv(test_name: &str, args: Vec<&str>, mockedit_renames: Vec<Rename>) {
+    let output = run_bulkmv(test_name, args, mockedit_renames);
     if !output.status.success() {
         let stdout = String::from_utf8(output.stdout).unwrap();
         let stderr = String::from_utf8(output.stderr).unwrap();
@@ -50,8 +45,12 @@ pub(crate) fn bulkmv(args: Vec<&str>, mockedit_renames: Vec<Rename>) {
     }
 }
 
-pub(crate) fn bulkmv_stdout(args: Vec<&str>, mockedit_renames: Vec<Rename>) -> String {
-    let output = run_bulkmv(args, mockedit_renames);
+pub(crate) fn bulkmv_stdout(
+    test_name: &str,
+    args: Vec<&str>,
+    mockedit_renames: Vec<Rename>,
+) -> String {
+    let output = run_bulkmv(test_name, args, mockedit_renames);
     let stdout = String::from_utf8(output.stdout).unwrap();
     if !output.status.success() {
         let stderr = String::from_utf8(output.stderr).unwrap();
@@ -60,9 +59,10 @@ pub(crate) fn bulkmv_stdout(args: Vec<&str>, mockedit_renames: Vec<Rename>) -> S
     stdout
 }
 
-fn run_bulkmv(args: Vec<&str>, mockedit_renames: Vec<Rename>) -> process::Output {
+fn run_bulkmv(test_name: &str, args: Vec<&str>, mockedit_renames: Vec<Rename>) -> process::Output {
     let tested_executable = env!("CARGO_BIN_EXE_bulkmv");
     process::Command::new(tested_executable)
+        .env("BULKMV_CWD", get_test_dir(test_name))
         .env("EDITOR", mockedit(mockedit_renames))
         .args(args)
         .output()
@@ -86,7 +86,8 @@ fn mockedit(renames: Vec<Rename>) -> String {
     buf
 }
 
-pub(crate) fn get_dir_items(path: &str) -> Vec<String> {
+pub(crate) fn get_dir_items(test_name: &str) -> Vec<String> {
+    let path = get_test_dir(test_name);
     let dir = fs::read_dir(path).unwrap();
 
     let mut dir_contents: Vec<_> = dir.map(|res| res.unwrap()).collect();
@@ -97,6 +98,8 @@ pub(crate) fn get_dir_items(path: &str) -> Vec<String> {
         .collect()
 }
 
-pub(crate) fn get_file_content(path: &str) -> String {
-    fs::read_to_string(path).unwrap()
+pub(crate) fn get_file_content(test_name: &str, path: &str) -> String {
+    let dir = get_test_dir(test_name);
+    let file = path::PathBuf::from(dir).join(path);
+    fs::read_to_string(file).unwrap()
 }

@@ -1,4 +1,17 @@
-use std::{env, fs, io, process};
+use std::io::Write;
+use std::{env, fs, io, path, process};
+
+macro_rules! debug {
+    ($($arg:tt)*) => {
+        cfg_select! {
+            debug_assertions => {
+                eprint!("DEBUG: ");
+                eprintln!($($arg)*);
+            },
+            _ => {}
+        }
+    };
+}
 
 const TMP_FILE_PATH: &'static str = "BULKMV_FILE";
 
@@ -6,15 +19,17 @@ fn main() {
     let config = parse_args();
     let current_items = get_dir_items(config.clone());
 
-    write_dir_items_to_temp_file(&current_items);
-    open_editor(TMP_FILE_PATH);
+    debug!("current items: {:?}", current_items);
+    debug!("current working directory: {:?}", env::current_dir());
+    let tmp_file_path = write_dir_items_to_temp_file(&current_items);
+    open_editor(&tmp_file_path);
     let items_to_rename = read_dir_items_from_temp_file();
 
     if config.verbose {
         print_dir_items_to_rename(&current_items, &items_to_rename);
     }
     rename_files(&current_items, &items_to_rename);
-    delete_temp_file();
+    delete_temp_file(&tmp_file_path);
 }
 
 #[derive(Clone)]
@@ -34,10 +49,25 @@ fn parse_args() -> Config {
         err_exit(format!("error: {} is not a directory", path));
     }
 
+    set_working_directory();
+
     Config {
         directory: path.to_string(),
         recursive: false,
         verbose: false,
+    }
+}
+
+fn set_working_directory() {
+    cfg_select! {
+        debug_assertions => {
+            let working_directory = env::var("BULKMV_CWD").unwrap_or(String::new());
+            if !working_directory.trim().is_empty() {
+                debug!("changing working directory to {}", working_directory);
+                env::set_current_dir(working_directory).unwrap_or_else(os_err_exit);
+            }
+        }
+        _ => {}
     }
 }
 
@@ -48,7 +78,8 @@ fn get_arg(args: &Vec<String>, index: usize) -> &str {
     args.iter().nth(index).unwrap().as_str()
 }
 
-fn open_editor(file_path: &str) {
+fn open_editor(file_path: &String) {
+    debug!("opening editor: {}", file_path);
     let editor_cmd = env::var("EDITOR").unwrap_or(String::new());
     let (cmd, args) = parse_command(editor_cmd);
     let exit_status = process::Command::new(cmd)
@@ -109,12 +140,27 @@ fn print_dir_items_to_rename(current_items: &Vec<String>, items_to_rename: &Vec<
         })
 }
 
-fn delete_temp_file() {
-    fs::remove_file(TMP_FILE_PATH).unwrap_or_else(os_err_exit);
+fn delete_temp_file(tmp_file_path: &String) {
+    fs::remove_file(tmp_file_path).unwrap_or_else(os_err_exit);
+    debug!("deleted: {}", tmp_file_path);
 }
 
-fn write_dir_items_to_temp_file(dir_items: &Vec<String>) {
-    fs::write(TMP_FILE_PATH, dir_items.join("\n")).unwrap_or_else(os_err_exit);
+fn write_dir_items_to_temp_file(dir_items: &Vec<String>) -> String {
+    let file = fs::File::create(TMP_FILE_PATH).unwrap_or_else(os_err_exit);
+    let mut buffer = io::BufWriter::new(&file);
+    buffer
+        .write_all(dir_items.join("\n").as_bytes())
+        .unwrap_or_else(os_err_exit);
+    file.sync_all().unwrap_or_else(os_err_exit);
+
+    debug!("wrote to {}", TMP_FILE_PATH);
+    let path = path::Path::new(TMP_FILE_PATH)
+        .canonicalize()
+        .unwrap_or_else(|err| {
+            debug!("failed to canonicalize: {}", err);
+            os_err_exit(err)
+        });
+    path.to_string_lossy().to_string()
 }
 
 fn read_dir_items_from_temp_file() -> Vec<String> {
@@ -166,4 +212,5 @@ fn os_err_exit<T>(err: io::Error) -> T {
 
 fn force_delete_temp_file() {
     fs::remove_file(TMP_FILE_PATH).unwrap_or(());
+    debug!("force deleted {}", TMP_FILE_PATH);
 }
