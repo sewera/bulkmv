@@ -27,52 +27,64 @@ fn quiet_output() {
     assert_eq!(output.trim(), "");
 }
 
-#[test]
-fn verbose_output_param_before_dir() {
-    // given
-    let test_name = "verbose_output_param_before_dir";
-    let files = vec![test::File {
-        name: TEST_FILE_NAME,
-        content: TEST_FILE_CONTENT,
-    }];
-    let renames = vec![test::Rename {
-        from: TEST_FILE_NAME,
-        to: TEST_FILE_NAME_RENAMED,
-    }];
-    test::init(test_name, files);
-    let args = vec!["-v", "."];
+mod verbose_output {
+    use super::*;
 
-    // when
-    let output = test::bulkmv_stdout(test_name, args, renames);
+    #[test]
+    fn param_before_dir() {
+        test_verbose_output("verbose_output.param_before_dir", vec!["-v", "."]);
+    }
 
-    // then
-    assert_eq!(
-        output.trim(),
-        format!("{TEST_FILE_NAME} -> {TEST_FILE_NAME_RENAMED}\n")
-    );
-}
+    #[test]
+    fn param_after_dir() {
+        test_verbose_output("verbose_output.param_after_dir", vec![".", "-v"]);
+    }
 
-#[test]
-fn verbose_output_param_after_dir() {
-    // given
-    let test_name = "verbose_output_param_after_dir";
-    let files = vec![test::File {
-        name: TEST_FILE_NAME,
-        content: TEST_FILE_CONTENT,
-    }];
-    let renames = vec![test::Rename {
-        from: TEST_FILE_NAME,
-        to: TEST_FILE_NAME_RENAMED,
-    }];
-    test::init(test_name, files);
-    let args = vec![".", "-v"];
+    #[test]
+    fn dir_after_separator() {
+        test_verbose_output("verbose_output.dir_after_separator", vec!["-v", "--", "."]);
+    }
 
-    // when
-    let output = test::bulkmv_stdout(test_name, args, renames);
+    #[test]
+    fn long_flag_before_dir() {
+        test_verbose_output(
+            "verbose_output.long_flag_before_dir",
+            vec!["--verbose", "."],
+        );
+    }
 
-    // then
-    assert_eq!(
-        output.trim(),
-        format!("{TEST_FILE_NAME} -> {TEST_FILE_NAME_RENAMED}\n")
-    );
+    #[test]
+    fn long_flag_after_dir() {
+        test_verbose_output("verbose_output.long_flag_after_dir", vec![".", "--verbose"]);
+    }
+
+    #[test]
+    fn long_flag_and_dir_after_separator() {
+        test_verbose_output(
+            "verbose_output.long_flag_and_dir_after_separator",
+            vec!["--verbose", "--", "."],
+        );
+    }
+
+    fn test_verbose_output(test_name: &str, args: Vec<&str>) {
+        // given
+        let files = vec![test::File {
+            name: TEST_FILE_NAME,
+            content: TEST_FILE_CONTENT,
+        }];
+        let renames = vec![test::Rename {
+            from: TEST_FILE_NAME,
+            to: TEST_FILE_NAME_RENAMED,
+        }];
+        test::init(test_name, files);
+
+        // when
+        let output = test::bulkmv_stdout(test_name, args, renames);
+
+        // then
+        assert_eq!(
+            output.trim(),
+            format!("{TEST_FILE_NAME} -> {TEST_FILE_NAME_RENAMED}")
+        );
+    }
 }

@@ -39,23 +39,89 @@ struct Config {
     verbose: bool,
 }
 
+#[derive(Eq, PartialEq)]
+enum Flag {
+    Unknown(String),
+    Separator,
+    Recursive,
+    Verbose,
+}
+
+const FLAG_PREFIX: &'static str = "-";
+const FLAG_SEPARATOR: &'static str = "--";
+
+const FLAG_RECURSIVE_SHORT: &'static str = "-r";
+const FLAG_RECURSIVE_LONG: &'static str = "--recursive";
+
+const FLAG_VERBOSE_SHORT: &'static str = "-v";
+const FLAG_VERBOSE_LONG: &'static str = "--verbose";
+
 fn parse_args() -> Config {
-    let args: Vec<String> = env::args().collect();
-    if args.len() != 2 {
-        err_exit(format!("usage: {} <dir>", get_arg(&args, 0)));
+    let all_args: Vec<String> = env::args().collect();
+    if all_args.len() < 2 {
+        err_usage_exit()
     }
-    let path = get_arg(&args, 1);
+    let args: Vec<String> = all_args.iter().skip(1).map(move |x| x.into()).collect();
+
+    let flags = parse_flags(&args);
+
+    let flag_separator = args.iter().position(|arg| arg.eq(FLAG_SEPARATOR));
+    let path = flag_separator
+        .and_then(|separator_index| args.get(separator_index + 1))
+        .or_else(|| args.iter().find(|arg| !arg.starts_with(FLAG_PREFIX)))
+        .unwrap_or_else(err_usage_exit);
+
     if !is_dir(path) {
-        err_exit(format!("error: {} is not a directory", path));
+        err_exit(format!("error: {} is not a directory", path))
     }
 
     set_working_directory();
 
     Config {
-        directory: path.to_string(),
-        recursive: false,
-        verbose: false,
+        directory: path.into(),
+        recursive: flags.contains(&Flag::Recursive),
+        verbose: flags.contains(&Flag::Verbose),
     }
+}
+
+fn parse_flags(args: &Vec<String>) -> Vec<Flag> {
+    let flags: Vec<_> = args
+        .iter()
+        .filter(|arg| arg.starts_with(FLAG_PREFIX))
+        .map(|arg| match arg.as_str() {
+            FLAG_VERBOSE_SHORT => Flag::Verbose,
+            FLAG_VERBOSE_LONG => Flag::Verbose,
+            FLAG_RECURSIVE_SHORT => Flag::Recursive,
+            FLAG_RECURSIVE_LONG => Flag::Recursive,
+            FLAG_SEPARATOR => Flag::Separator,
+            _ => Flag::Unknown(arg.to_string()),
+        })
+        .collect();
+
+    let unknown_flags: Vec<_> = flags
+        .iter()
+        .filter(|flag| match flag {
+            Flag::Unknown(_) => true,
+            _ => false,
+        })
+        .map(|unknown_flag| match unknown_flag {
+            Flag::Unknown(s) => s.into(),
+            _ => String::new(),
+        })
+        .collect();
+
+    if !unknown_flags.is_empty() {
+        eprintln!("error: unknown flag: {}", unknown_flags.join(" "));
+        err_usage_exit()
+    }
+    flags
+}
+
+fn err_usage_exit<T>() -> T {
+    let executable: String = env::args()
+        .next()
+        .unwrap_or_else(|| err_exit("error: could not get executable name".into()));
+    err_exit(format!("usage: {} [-v|--verbose] <dir>", executable))
 }
 
 fn set_working_directory() {
@@ -71,13 +137,6 @@ fn set_working_directory() {
     }
 }
 
-fn get_arg(args: &Vec<String>, index: usize) -> &str {
-    if index > 1 {
-        todo!("more than one arg is not implemented yet")
-    }
-    args.iter().nth(index).unwrap().as_str()
-}
-
 fn open_editor(file_path: &String) {
     debug!("opening editor: {}", file_path);
     let editor_cmd = env::var("EDITOR").unwrap_or(String::new());
@@ -89,7 +148,7 @@ fn open_editor(file_path: &String) {
         .unwrap_or_else(os_err_exit);
 
     if !exit_status.success() {
-        err_exit(format!("error: editor exited with {}", exit_status));
+        err_exit(format!("error: editor exited with {}", exit_status))
     }
 }
 
@@ -116,7 +175,7 @@ fn parse_command(cmdline: String) -> (String, Vec<String>) {
 
 fn rename_files(current_items: &Vec<String>, items_to_rename: &Vec<String>) {
     if current_items.len() != items_to_rename.len() {
-        err_exit("error: wrong number of items to rename".to_string());
+        err_exit("error: wrong number of items to rename".to_string())
     }
 
     current_items
@@ -129,7 +188,7 @@ fn rename_files(current_items: &Vec<String>, items_to_rename: &Vec<String>) {
 
 fn print_dir_items_to_rename(current_items: &Vec<String>, items_to_rename: &Vec<String>) {
     if current_items.len() != items_to_rename.len() {
-        err_exit("error: wrong number of items to rename".to_string());
+        err_exit("error: wrong number of items to rename".to_string())
     }
 
     current_items
@@ -198,7 +257,7 @@ fn map_dir_entries_to_strings(dir_items: &Vec<fs::DirEntry>) -> Vec<String> {
         .collect()
 }
 
-fn err_exit(error: String) {
+fn err_exit<T>(error: String) -> T {
     eprintln!("{}", error);
     force_delete_temp_file();
     process::exit(1);
