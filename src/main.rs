@@ -50,10 +50,10 @@ enum Flag {
 const FLAG_PREFIX: &'static str = "-";
 const FLAG_SEPARATOR: &'static str = "--";
 
-const FLAG_RECURSIVE_SHORT: &'static str = "-r";
+const FLAG_RECURSIVE_SHORT: char = 'r';
 const FLAG_RECURSIVE_LONG: &'static str = "--recursive";
 
-const FLAG_VERBOSE_SHORT: &'static str = "-v";
+const FLAG_VERBOSE_SHORT: char = 'v';
 const FLAG_VERBOSE_LONG: &'static str = "--verbose";
 
 fn parse_args() -> Config {
@@ -88,13 +88,11 @@ fn parse_flags(args: &Vec<String>) -> Vec<Flag> {
     let flags: Vec<_> = args
         .iter()
         .filter(|arg| arg.starts_with(FLAG_PREFIX))
-        .map(|arg| match arg.as_str() {
-            FLAG_VERBOSE_SHORT => Flag::Verbose,
-            FLAG_VERBOSE_LONG => Flag::Verbose,
-            FLAG_RECURSIVE_SHORT => Flag::Recursive,
-            FLAG_RECURSIVE_LONG => Flag::Recursive,
-            FLAG_SEPARATOR => Flag::Separator,
-            _ => Flag::Unknown(arg.to_string()),
+        .flat_map(|arg| match arg.as_str() {
+            FLAG_VERBOSE_LONG => vec![Flag::Verbose],
+            FLAG_RECURSIVE_LONG => vec![Flag::Recursive],
+            FLAG_SEPARATOR => vec![Flag::Separator],
+            s => parse_short_flags(s),
         })
         .collect();
 
@@ -115,6 +113,18 @@ fn parse_flags(args: &Vec<String>) -> Vec<Flag> {
         err_usage_exit()
     }
     flags
+}
+
+fn parse_short_flags(arg: &str) -> Vec<Flag> {
+    let short_flags = arg.strip_prefix(FLAG_PREFIX).unwrap_or("");
+    short_flags
+        .chars()
+        .map(|short_flag| match short_flag {
+            FLAG_VERBOSE_SHORT => Flag::Verbose,
+            FLAG_RECURSIVE_SHORT => Flag::Recursive,
+            s => Flag::Unknown(s.to_string()),
+        })
+        .collect()
 }
 
 fn err_usage_exit<T>() -> T {
