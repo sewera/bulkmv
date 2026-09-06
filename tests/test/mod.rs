@@ -3,7 +3,7 @@ use std::{env, fs, path, process, str};
 
 const TESTDATA_DIRNAME: &'static str = "testdata";
 
-pub(crate) fn init(test_name: &str, files_to_create: Vec<File>) {
+pub fn init(test_name: &str, files_to_create: Vec<File>) {
     let test_dir = get_test_dir(test_name);
     clear_test_dir(&test_dir);
     files_to_create
@@ -11,9 +11,9 @@ pub(crate) fn init(test_name: &str, files_to_create: Vec<File>) {
         .for_each(|file| make_test_file(&test_dir, file.name, file.content));
 }
 
-pub(crate) struct File<'a> {
-    pub(crate) name: &'a str,
-    pub(crate) content: &'a str,
+pub struct File<'a> {
+    pub name: &'a str,
+    pub content: &'a str,
 }
 
 fn get_test_dir(test_dir_name: &str) -> path::PathBuf {
@@ -30,13 +30,13 @@ fn clear_test_dir(test_dir: &path::PathBuf) {
     fs::remove_dir_all(test_dir).unwrap();
 }
 
-pub(crate) fn make_test_file(test_dir: &path::PathBuf, filename: &str, file_content: &str) {
+pub fn make_test_file(test_dir: &path::PathBuf, filename: &str, file_content: &str) {
     let test_file_path = test_dir.join(filename);
     fs::create_dir_all(test_dir).unwrap();
     fs::write(test_file_path, file_content).unwrap();
 }
 
-pub(crate) fn bulkmv(test_name: &str, args: Vec<&str>, mockedit_renames: Vec<Rename>) {
+pub fn bulkmv(test_name: &str, args: Vec<&str>, mockedit_renames: Vec<Rename>) {
     let output = run_bulkmv(test_name, args, mockedit_renames);
     if !output.status.success() {
         let stdout = String::from_utf8(output.stdout).unwrap();
@@ -45,11 +45,7 @@ pub(crate) fn bulkmv(test_name: &str, args: Vec<&str>, mockedit_renames: Vec<Ren
     }
 }
 
-pub(crate) fn bulkmv_stdout(
-    test_name: &str,
-    args: Vec<&str>,
-    mockedit_renames: Vec<Rename>,
-) -> String {
+pub fn bulkmv_stdout(test_name: &str, args: Vec<&str>, mockedit_renames: Vec<Rename>) -> String {
     let output = run_bulkmv(test_name, args, mockedit_renames);
     let stdout = String::from_utf8(output.stdout).unwrap();
     if !output.status.success() {
@@ -69,9 +65,9 @@ fn run_bulkmv(test_name: &str, args: Vec<&str>, mockedit_renames: Vec<Rename>) -
         .unwrap()
 }
 
-pub(crate) struct Rename<'a> {
-    pub(crate) from: &'a str,
-    pub(crate) to: &'a str,
+pub struct Rename<'a> {
+    pub from: &'a str,
+    pub to: &'a str,
 }
 
 fn mockedit(renames: Vec<Rename>) -> String {
@@ -86,7 +82,7 @@ fn mockedit(renames: Vec<Rename>) -> String {
     buf
 }
 
-pub(crate) fn get_dir_items(test_name: &str) -> Vec<String> {
+pub fn get_dir_items(test_name: &str) -> Vec<String> {
     let path = get_test_dir(test_name);
     let dir = fs::read_dir(path).unwrap();
 
@@ -98,7 +94,7 @@ pub(crate) fn get_dir_items(test_name: &str) -> Vec<String> {
         .collect()
 }
 
-pub(crate) fn get_file_content(test_name: &str, path: &str) -> String {
+pub fn get_file_content(test_name: &str, path: &str) -> String {
     let dir = get_test_dir(test_name);
     let file = path::PathBuf::from(dir).join(path);
     fs::read_to_string(file).unwrap()

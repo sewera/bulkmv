@@ -1,22 +1,15 @@
+use flag::Config;
 use std::io::Write;
 use std::{env, fs, io, path, process};
 
-macro_rules! debug {
-    ($($arg:tt)*) => {
-        cfg_select! {
-            debug_assertions => {
-                eprint!("DEBUG: ");
-                eprintln!($($arg)*);
-            },
-            _ => {}
-        }
-    };
-}
+mod debug;
+mod exit;
+mod flag;
 
 const TMP_FILE_PATH: &'static str = "BULKMV_FILE";
 
 fn main() {
-    let config = parse_args();
+    let config = flag::parse();
     let current_items = get_dir_items(config.clone());
 
     debug!("current items: {:?}", current_items);
@@ -32,121 +25,6 @@ fn main() {
     delete_temp_file(&tmp_file_path);
 }
 
-#[derive(Clone)]
-struct Config {
-    directory: String,
-    recursive: bool,
-    verbose: bool,
-}
-
-#[derive(Eq, PartialEq)]
-enum Flag {
-    Unknown(String),
-    Separator,
-    Recursive,
-    Verbose,
-}
-
-const FLAG_PREFIX: &'static str = "-";
-const FLAG_SEPARATOR: &'static str = "--";
-
-const FLAG_RECURSIVE_SHORT: char = 'r';
-const FLAG_RECURSIVE_LONG: &'static str = "--recursive";
-
-const FLAG_VERBOSE_SHORT: char = 'v';
-const FLAG_VERBOSE_LONG: &'static str = "--verbose";
-
-fn parse_args() -> Config {
-    let all_args: Vec<String> = env::args().collect();
-    if all_args.len() < 2 {
-        err_usage_exit()
-    }
-    let args: Vec<String> = all_args.iter().skip(1).map(move |x| x.into()).collect();
-
-    let flags = parse_flags(&args);
-
-    let flag_separator = args.iter().position(|arg| arg.eq(FLAG_SEPARATOR));
-    let path = flag_separator
-        .and_then(|separator_index| args.get(separator_index + 1))
-        .or_else(|| args.iter().find(|arg| !arg.starts_with(FLAG_PREFIX)))
-        .unwrap_or_else(err_usage_exit);
-
-    if !is_dir(path) {
-        err_exit(format!("error: {} is not a directory", path))
-    }
-
-    set_working_directory();
-
-    Config {
-        directory: path.into(),
-        recursive: flags.contains(&Flag::Recursive),
-        verbose: flags.contains(&Flag::Verbose),
-    }
-}
-
-fn parse_flags(args: &Vec<String>) -> Vec<Flag> {
-    let flags: Vec<_> = args
-        .iter()
-        .filter(|arg| arg.starts_with(FLAG_PREFIX))
-        .flat_map(|arg| match arg.as_str() {
-            FLAG_VERBOSE_LONG => vec![Flag::Verbose],
-            FLAG_RECURSIVE_LONG => vec![Flag::Recursive],
-            FLAG_SEPARATOR => vec![Flag::Separator],
-            s => parse_short_flags(s),
-        })
-        .collect();
-
-    let unknown_flags: Vec<_> = flags
-        .iter()
-        .filter(|flag| match flag {
-            Flag::Unknown(_) => true,
-            _ => false,
-        })
-        .map(|unknown_flag| match unknown_flag {
-            Flag::Unknown(s) => s.into(),
-            _ => String::new(),
-        })
-        .collect();
-
-    if !unknown_flags.is_empty() {
-        eprintln!("error: unknown flag: {}", unknown_flags.join(" "));
-        err_usage_exit()
-    }
-    flags
-}
-
-fn parse_short_flags(arg: &str) -> Vec<Flag> {
-    let short_flags = arg.strip_prefix(FLAG_PREFIX).unwrap_or("");
-    short_flags
-        .chars()
-        .map(|short_flag| match short_flag {
-            FLAG_VERBOSE_SHORT => Flag::Verbose,
-            FLAG_RECURSIVE_SHORT => Flag::Recursive,
-            s => Flag::Unknown(s.to_string()),
-        })
-        .collect()
-}
-
-fn err_usage_exit<T>() -> T {
-    let executable: String = env::args()
-        .next()
-        .unwrap_or_else(|| err_exit("error: could not get executable name".into()));
-    err_exit(format!("usage: {} [-v|--verbose] <dir>", executable))
-}
-
-fn set_working_directory() {
-    cfg_select! {
-        debug_assertions => {
-            let working_directory = env::var("BULKMV_CWD").unwrap_or(String::new());
-            if !working_directory.trim().is_empty() {
-                debug!("changing working directory to {}", working_directory);
-                env::set_current_dir(working_directory).unwrap_or_else(os_err_exit);
-            }
-        }
-        _ => {}
-    }
-}
-
 fn open_editor(file_path: &String) {
     debug!("opening editor: {}", file_path);
     let editor_cmd = env::var("EDITOR").unwrap_or(String::new());
@@ -155,10 +33,10 @@ fn open_editor(file_path: &String) {
         .args(args)
         .arg(file_path)
         .status()
-        .unwrap_or_else(os_err_exit);
+        .unwrap_or_else(exit::os_err);
 
     if !exit_status.success() {
-        err_exit(format!("error: editor exited with {}", exit_status))
+        exit::err(format!("error: editor exited with {}", exit_status))
     }
 }
 
@@ -185,20 +63,20 @@ fn parse_command(cmdline: String) -> (String, Vec<String>) {
 
 fn rename_files(current_items: &Vec<String>, items_to_rename: &Vec<String>) {
     if current_items.len() != items_to_rename.len() {
-        err_exit("error: wrong number of items to rename".to_string())
+        exit::err("error: wrong number of items to rename".to_string())
     }
 
     current_items
         .iter()
         .zip(items_to_rename.iter())
         .for_each(|(current_item, item_to_rename)| {
-            fs::rename(current_item, item_to_rename).unwrap_or_else(os_err_exit);
+            fs::rename(current_item, item_to_rename).unwrap_or_else(exit::os_err);
         })
 }
 
 fn print_dir_items_to_rename(current_items: &Vec<String>, items_to_rename: &Vec<String>) {
     if current_items.len() != items_to_rename.len() {
-        err_exit("error: wrong number of items to rename".to_string())
+        exit::err("error: wrong number of items to rename".to_string())
     }
 
     current_items
@@ -210,30 +88,30 @@ fn print_dir_items_to_rename(current_items: &Vec<String>, items_to_rename: &Vec<
 }
 
 fn delete_temp_file(tmp_file_path: &String) {
-    fs::remove_file(tmp_file_path).unwrap_or_else(os_err_exit);
+    fs::remove_file(tmp_file_path).unwrap_or_else(exit::os_err);
     debug!("deleted: {}", tmp_file_path);
 }
 
 fn write_dir_items_to_temp_file(dir_items: &Vec<String>) -> String {
-    let file = fs::File::create(TMP_FILE_PATH).unwrap_or_else(os_err_exit);
+    let file = fs::File::create(TMP_FILE_PATH).unwrap_or_else(exit::os_err);
     let mut buffer = io::BufWriter::new(&file);
     buffer
         .write_all(dir_items.join("\n").as_bytes())
-        .unwrap_or_else(os_err_exit);
-    file.sync_all().unwrap_or_else(os_err_exit);
+        .unwrap_or_else(exit::os_err);
+    file.sync_all().unwrap_or_else(exit::os_err);
 
     debug!("wrote to {}", TMP_FILE_PATH);
     let path = path::Path::new(TMP_FILE_PATH)
         .canonicalize()
         .unwrap_or_else(|err| {
             debug!("failed to canonicalize: {}", err);
-            os_err_exit(err)
+            exit::os_err(err)
         });
     path.to_string_lossy().to_string()
 }
 
 fn read_dir_items_from_temp_file() -> Vec<String> {
-    let file_content = fs::read_to_string(TMP_FILE_PATH).unwrap_or_else(os_err_exit);
+    let file_content = fs::read_to_string(TMP_FILE_PATH).unwrap_or_else(exit::os_err);
     let lines: Vec<&str> = file_content.split('\n').collect();
     lines
         .iter()
@@ -242,19 +120,15 @@ fn read_dir_items_from_temp_file() -> Vec<String> {
         .collect()
 }
 
-fn is_dir(path: &str) -> bool {
-    fs::metadata(path).unwrap_or_else(os_err_exit).is_dir()
-}
-
 fn get_dir_items(config: Config) -> Vec<String> {
     let path = config.directory;
     if config.recursive {
         todo!("recursive is not implemented yet")
     }
 
-    let dir = fs::read_dir(path).unwrap_or_else(os_err_exit);
+    let dir = fs::read_dir(path).unwrap_or_else(exit::os_err);
 
-    let mut dir_contents: Vec<_> = dir.map(|res| res.unwrap_or_else(os_err_exit)).collect();
+    let mut dir_contents: Vec<_> = dir.map(|res| res.unwrap_or_else(exit::os_err)).collect();
 
     dir_contents.sort_by(|a, b| a.path().cmp(&b.path()));
     map_dir_entries_to_strings(&dir_contents)
@@ -265,21 +139,4 @@ fn map_dir_entries_to_strings(dir_items: &Vec<fs::DirEntry>) -> Vec<String> {
         .iter()
         .map(|dir_entry| dir_entry.file_name().to_string_lossy().into_owned())
         .collect()
-}
-
-fn err_exit<T>(error: String) -> T {
-    eprintln!("{}", error);
-    force_delete_temp_file();
-    process::exit(1);
-}
-
-fn os_err_exit<T>(err: io::Error) -> T {
-    eprintln!("error: {}", err.to_string());
-    force_delete_temp_file();
-    process::exit(2);
-}
-
-fn force_delete_temp_file() {
-    fs::remove_file(TMP_FILE_PATH).unwrap_or(());
-    debug!("force deleted {}", TMP_FILE_PATH);
 }
