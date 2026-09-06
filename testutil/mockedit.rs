@@ -44,7 +44,7 @@ fn parse_args() -> Config {
     let rename_pairs = args[1..args.len() - 1].to_vec();
 
     let renames: Vec<_> = rename_pairs
-        .windows(2)
+        .chunks_exact(2)
         .map(|pair| Rename {
             current: pair[0].clone(),
             target: pair[1].clone(),
