@@ -55,6 +55,20 @@ pub fn bulkmv_stdout(test_name: &str, args: Vec<&str>, mockedit_renames: Vec<Ren
     stdout
 }
 
+pub fn bulkmv_stderr_fail(
+    test_name: &str,
+    args: Vec<&str>,
+    mockedit_renames: Vec<Rename>,
+) -> String {
+    let output = run_bulkmv(test_name, args, mockedit_renames);
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    if output.status.success() {
+        let stdout = String::from_utf8(output.stdout).unwrap();
+        panic!("stdout: {}\nstderr: {}", stdout, stderr);
+    }
+    stderr
+}
+
 fn run_bulkmv(test_name: &str, args: Vec<&str>, mockedit_renames: Vec<Rename>) -> process::Output {
     let tested_executable = env!("CARGO_BIN_EXE_bulkmv");
     process::Command::new(tested_executable)

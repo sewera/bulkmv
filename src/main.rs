@@ -1,4 +1,5 @@
 use flag::Config;
+use std::collections::HashSet;
 use std::env::current_dir;
 use std::fs;
 use std::io::{BufWriter, Write};
@@ -19,13 +20,70 @@ fn main() {
     debug!("current working directory: {:?}", current_dir());
     let tmp_file_path = write_dir_items_to_temp_file(&current_items);
     editor::open(&tmp_file_path);
-    let items_to_rename = read_dir_items_from_temp_file();
-
+    let target_file_names = read_dir_items_from_temp_file();
+    let renames = get_renames(&current_items, &target_file_names);
     if config.verbose {
-        print_dir_items_to_rename(&current_items, &items_to_rename);
+        print_dir_items_to_rename(&renames);
     }
-    rename_files(&current_items, &items_to_rename);
+    rename_files(&renames);
     delete_temp_file(&tmp_file_path);
+}
+
+fn get_renames(current_file_names: &Vec<String>, target_file_names: &Vec<String>) -> Vec<Rename> {
+    if current_file_names.len() != target_file_names.len() {
+        exit::err("error: wrong number of items to rename".to_string())
+    }
+    verify_target_file_names_unique(target_file_names);
+
+    let renames: Vec<_> = current_file_names
+        .iter()
+        .zip(target_file_names.iter())
+        .filter(|(current, target)| current != target)
+        .map(|(current, target)| {
+            current_file_names
+                .iter()
+                .find(|&item| item.eq(target))
+                .map(|_| Rename {
+                    current: current.into(),
+                    target: target.into(),
+                    collision: true,
+                })
+                .unwrap_or_else(|| Rename {
+                    current: current.into(),
+                    target: target.into(),
+                    collision: false,
+                })
+        })
+        .collect();
+
+    renames
+}
+
+fn verify_target_file_names_unique(target_file_names: &Vec<String>) {
+    let mut set = HashSet::new();
+    let mut non_unique = HashSet::new();
+    target_file_names.iter().for_each(|item| {
+        if !set.insert(item.clone()) {
+            non_unique.insert(item.clone());
+        }
+    });
+
+    if !non_unique.is_empty() {
+        let non_unique_formatted = non_unique
+            .iter()
+            .fold(String::new(), |acc, item| format!("{} {}", acc, item));
+        exit::err(format!(
+            "error: duplicate target names:{}",
+            non_unique_formatted
+        ))
+    }
+}
+
+#[derive(Clone)]
+struct Rename {
+    current: String,
+    target: String,
+    collision: bool,
 }
 
 fn get_dir_items(config: Config) -> Vec<String> {
@@ -77,30 +135,36 @@ fn read_dir_items_from_temp_file() -> Vec<String> {
         .collect()
 }
 
-fn print_dir_items_to_rename(current_items: &Vec<String>, items_to_rename: &Vec<String>) {
-    if current_items.len() != items_to_rename.len() {
-        exit::err("error: wrong number of items to rename".to_string())
-    }
-
-    current_items
+fn print_dir_items_to_rename(renames: &Vec<Rename>) {
+    renames
         .iter()
-        .zip(items_to_rename.iter())
-        .for_each(|(current_item, item_to_rename)| {
-            println!("{} -> {}", current_item, item_to_rename);
-        })
+        .for_each(|rename| println!("{} -> {}", rename.current, rename.target))
 }
 
-fn rename_files(current_items: &Vec<String>, items_to_rename: &Vec<String>) {
-    if current_items.len() != items_to_rename.len() {
-        exit::err("error: wrong number of items to rename".to_string())
-    }
-
-    current_items
+fn rename_files(renames: &Vec<Rename>) {
+    renames
         .iter()
-        .zip(items_to_rename.iter())
-        .for_each(|(current_item, item_to_rename)| {
-            fs::rename(current_item, item_to_rename).unwrap_or_else(exit::os_err);
-        })
+        .filter(|rename| rename.collision)
+        .for_each(|rename| {
+            fs::rename(&rename.current, temporary_name(&rename.current))
+                .unwrap_or_else(exit::os_err)
+        });
+    renames
+        .iter()
+        .filter(|rename| !rename.collision)
+        .for_each(|rename| {
+            fs::rename(&rename.current, &rename.target).unwrap_or_else(exit::os_err)
+        });
+    renames
+        .iter()
+        .filter(|rename| rename.collision)
+        .for_each(|rename| {
+            fs::rename(temporary_name(&rename.current), &rename.target).unwrap_or_else(exit::os_err)
+        });
+}
+
+fn temporary_name(name: &String) -> String {
+    format!("{name}_TEMP")
 }
 
 fn delete_temp_file(tmp_file_path: &String) {
