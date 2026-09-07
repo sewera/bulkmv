@@ -1,6 +1,5 @@
 use flag::Config;
 use std::collections::HashSet;
-use std::env::current_dir;
 use std::fs;
 use std::io::{BufWriter, Write};
 use std::path::Path;
@@ -17,7 +16,7 @@ fn main() {
     let current_items = get_dir_items(config.clone());
 
     debug!("current items: {:?}", current_items);
-    debug!("current working directory: {:?}", current_dir());
+    debug!("current working directory: {:?}", std::env::current_dir());
     let tmp_file_path = write_dir_items_to_temp_file(&current_items);
     editor::open(&tmp_file_path);
     let target_file_names = read_dir_items_from_temp_file();
@@ -97,14 +96,21 @@ fn get_dir_items(config: Config) -> Vec<String> {
     let mut dir_contents: Vec<_> = dir.map(|res| res.unwrap_or_else(exit::os_err)).collect();
 
     dir_contents.sort_by(|a, b| a.path().cmp(&b.path()));
-    map_dir_entries_to_strings(&dir_contents)
+    map_dir_entries_to_strings(&dir_contents, config.use_paths)
 }
 
-fn map_dir_entries_to_strings(dir_items: &Vec<fs::DirEntry>) -> Vec<String> {
-    dir_items
-        .iter()
-        .map(|dir_entry| dir_entry.file_name().to_string_lossy().into_owned())
-        .collect()
+fn map_dir_entries_to_strings(dir_items: &Vec<fs::DirEntry>, use_paths: bool) -> Vec<String> {
+    if use_paths {
+        dir_items
+            .iter()
+            .map(|dir_entry| dir_entry.path().to_string_lossy().to_string())
+            .collect()
+    } else {
+        dir_items
+            .iter()
+            .map(|dir_entry| dir_entry.file_name().to_string_lossy().to_string())
+            .collect()
+    }
 }
 
 fn write_dir_items_to_temp_file(dir_items: &Vec<String>) -> String {

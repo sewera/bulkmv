@@ -2,10 +2,19 @@ use crate::{debug, TMP_FILE_PATH};
 use std::{env, fs, io, process};
 
 pub(crate) fn err_usage<T>() -> T {
+    err(usage())
+}
+
+pub(crate) fn print_usage() {
+    println!("{}", usage());
+    process::exit(0);
+}
+
+fn usage() -> String {
     let executable: String = env::args()
         .next()
         .unwrap_or_else(|| err("error: could not get executable name".into()));
-    err(format!("usage: {} [-v|--verbose] <dir>", executable))
+    format!("usage: {} [-v|--verbose] <dir>", executable)
 }
 
 pub(crate) fn err<T>(error: String) -> T {

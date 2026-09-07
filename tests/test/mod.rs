@@ -11,12 +11,30 @@ pub fn init(test_name: &str, files_to_create: Vec<File>) {
         .for_each(|file| make_test_file(&test_dir, file.name, file.content));
 }
 
+pub fn init_with_subdirectory(
+    test_name: &str,
+    subdirectory_name: &str,
+    files_to_create: Vec<File>,
+) {
+    let test_dir = get_test_dir(test_name);
+    clear_test_dir(&test_dir);
+    fs::create_dir_all(format!(
+        "{}/{}",
+        test_dir.to_string_lossy(),
+        subdirectory_name
+    ))
+    .unwrap();
+    files_to_create
+        .iter()
+        .for_each(|file| make_test_file(&test_dir, file.name, file.content));
+}
+
 pub struct File<'a> {
     pub name: &'a str,
     pub content: &'a str,
 }
 
-fn get_test_dir(test_dir_name: &str) -> path::PathBuf {
+pub fn get_test_dir(test_dir_name: &str) -> path::PathBuf {
     let tmpdir = env!("CARGO_TARGET_TMPDIR");
     path::PathBuf::from(tmpdir)
         .join(TESTDATA_DIRNAME)
@@ -106,6 +124,11 @@ pub fn get_dir_items(test_name: &str) -> Vec<String> {
         .iter()
         .map(|dir_entry| dir_entry.file_name().to_string_lossy().to_string())
         .collect()
+}
+
+pub fn get_dir_items_in_subdirectory(test_name: &str, subdirectory: &str) -> Vec<String> {
+    let path = format!("{test_name}/{subdirectory}");
+    get_dir_items(&path)
 }
 
 pub fn get_file_content(test_name: &str, path: &str) -> String {
