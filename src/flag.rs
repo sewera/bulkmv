@@ -1,6 +1,8 @@
-use crate::debug;
 use crate::exit;
 use std::{env, fs, path};
+
+#[allow(unused)]
+use crate::debug;
 
 #[derive(Clone)]
 pub(crate) struct Config {
@@ -11,7 +13,7 @@ pub(crate) struct Config {
 }
 
 #[derive(Eq, PartialEq)]
-pub(crate) enum Flag {
+enum Flag {
     Unknown(String),
     Separator,
     Recursive,
@@ -19,14 +21,14 @@ pub(crate) enum Flag {
     Help,
 }
 
-pub(crate) const FLAG_PREFIX: &'static str = "-";
-pub(crate) const FLAG_SEPARATOR: &'static str = "--";
-pub(crate) const FLAG_RECURSIVE_SHORT: char = 'r';
-pub(crate) const FLAG_RECURSIVE_LONG: &'static str = "--recursive";
-pub(crate) const FLAG_VERBOSE_SHORT: char = 'v';
-pub(crate) const FLAG_VERBOSE_LONG: &'static str = "--verbose";
-pub(crate) const FLAG_HELP_SHORT: char = 'h';
-pub(crate) const FLAG_HELP_LONG: &'static str = "--help";
+const FLAG_PREFIX: &'static str = "-";
+const FLAG_SEPARATOR: &'static str = "--";
+const FLAG_RECURSIVE_SHORT: char = 'r';
+const FLAG_RECURSIVE_LONG: &'static str = "--recursive";
+const FLAG_VERBOSE_SHORT: char = 'v';
+const FLAG_VERBOSE_LONG: &'static str = "--verbose";
+const FLAG_HELP_SHORT: char = 'h';
+const FLAG_HELP_LONG: &'static str = "--help";
 
 pub(crate) fn parse() -> Config {
     let all_args: Vec<String> = env::args().collect();
