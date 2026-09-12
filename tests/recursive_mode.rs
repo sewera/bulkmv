@@ -6,17 +6,17 @@ fn move_files_in_recursive_mode() {
     let subdirectory_1 = "subdirectory_1";
     let subdirectory_2 = "subdirectory_2";
 
-    let file_1_1 = format!("{}/{}", subdirectory_1, "file_1_1");
+    let file_1_1 = format!("./{}/{}", subdirectory_1, "file_1_1");
     let filename_1_1_renamed = "file_1_1_renamed";
     let file_1_1_renamed = format!("{}/{}", subdirectory_1, filename_1_1_renamed);
     let file_1_1_content = "file_1_1 test content";
 
-    let file_1_2 = format!("{}/{}", subdirectory_1, "file_1_2");
+    let file_1_2 = format!("./{}/{}", subdirectory_1, "file_1_2");
     let filename_1_2_renamed = "file_1_2_renamed";
     let file_1_2_renamed = format!("{}/{}", subdirectory_2, filename_1_2_renamed);
     let file_1_2_content = "file_1_2 test content";
 
-    let file_2_1 = format!("{}/{}", subdirectory_2, "file_2_1");
+    let file_2_1 = format!("./{}/{}", subdirectory_2, "file_2_1");
     let filename_2_1_renamed = "file_2_1_renamed";
     let file_2_1_renamed = format!("{}/{}", subdirectory_1, filename_2_1_renamed);
     let file_2_1_content = "file_2_1 test content";

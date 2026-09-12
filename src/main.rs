@@ -1,8 +1,9 @@
 use flag::Config;
+use fs::{DirEntry, File};
 use std::collections::HashSet;
 use std::fs;
 use std::io::{BufWriter, Write};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 mod debug;
 mod editor;
@@ -13,7 +14,7 @@ const TMP_FILE_PATH: &'static str = "BULKMV_FILE";
 
 fn main() {
     let config = flag::parse();
-    let current_items = get_dir_items(config.clone());
+    let current_items = list_directory(config.clone());
 
     debug!("current items: {:?}", current_items);
     debug!("current working directory: {:?}", std::env::current_dir());
@@ -85,21 +86,45 @@ struct Rename {
     collision: bool,
 }
 
-fn get_dir_items(config: Config) -> Vec<String> {
+fn list_directory(config: Config) -> Vec<String> {
     let path = config.directory;
-    if config.recursive {
-        todo!("recursive is not implemented yet")
-    }
 
-    let dir = fs::read_dir(path).unwrap_or_else(exit::os_err);
+    let dir_contents = if config.recursive {
+        list_dir_recursive(path.into())
+    } else {
+        list_single_dir(path.into())
+    };
+
+    map_dir_entries_to_strings(&dir_contents, config.use_paths)
+}
+
+fn list_dir_recursive(path: PathBuf) -> Vec<DirEntry> {
+    let dir = path.read_dir().unwrap_or_else(exit::os_err);
+    let mut dir_contents: Vec<_> = dir.map(|res| res.unwrap_or_else(exit::os_err)).collect();
+    dir_contents.sort_by(|a, b| a.path().cmp(&b.path()));
+    dir_contents
+        .into_iter()
+        .flat_map(|file| {
+            let file_type = file.file_type().unwrap_or_else(exit::os_err);
+            if file_type.is_dir() {
+                list_dir_recursive(file.path())
+            } else {
+                vec![file]
+            }
+        })
+        .collect()
+}
+
+fn list_single_dir(path: PathBuf) -> Vec<DirEntry> {
+    let dir = path.read_dir().unwrap_or_else(exit::os_err);
 
     let mut dir_contents: Vec<_> = dir.map(|res| res.unwrap_or_else(exit::os_err)).collect();
 
     dir_contents.sort_by(|a, b| a.path().cmp(&b.path()));
-    map_dir_entries_to_strings(&dir_contents, config.use_paths)
+    dir_contents
 }
 
-fn map_dir_entries_to_strings(dir_items: &Vec<fs::DirEntry>, use_paths: bool) -> Vec<String> {
+fn map_dir_entries_to_strings(dir_items: &Vec<DirEntry>, use_paths: bool) -> Vec<String> {
     if use_paths {
         dir_items
             .iter()
@@ -114,7 +139,7 @@ fn map_dir_entries_to_strings(dir_items: &Vec<fs::DirEntry>, use_paths: bool) ->
 }
 
 fn write_dir_items_to_temp_file(dir_items: &Vec<String>) -> String {
-    let file = fs::File::create(TMP_FILE_PATH).unwrap_or_else(exit::os_err);
+    let file = File::create(TMP_FILE_PATH).unwrap_or_else(exit::os_err);
     let mut buffer = BufWriter::new(&file);
     buffer
         .write_all(dir_items.join("\n").as_bytes())
