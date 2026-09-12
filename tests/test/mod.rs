@@ -11,19 +11,16 @@ pub fn init(test_name: &str, files_to_create: Vec<File>) {
         .for_each(|file| make_test_file(&test_dir, file.name, file.content));
 }
 
-pub fn init_with_subdirectory(
+pub fn init_with_subdirectories(
     test_name: &str,
-    subdirectory_name: &str,
+    subdirectories: Vec<String>,
     files_to_create: Vec<File>,
 ) {
     let test_dir = get_test_dir(test_name);
     clear_test_dir(&test_dir);
-    fs::create_dir_all(format!(
-        "{}/{}",
-        test_dir.to_string_lossy(),
-        subdirectory_name
-    ))
-    .unwrap();
+    subdirectories.iter().for_each(|dir| {
+        fs::create_dir_all(format!("{}/{}", test_dir.to_string_lossy(), dir)).unwrap();
+    });
     files_to_create
         .iter()
         .for_each(|file| make_test_file(&test_dir, file.name, file.content));

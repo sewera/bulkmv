@@ -1,5 +1,5 @@
 use crate::exit;
-use std::{env, fs, path};
+use std::{env, fs};
 
 #[allow(unused)]
 use crate::debug;
@@ -21,6 +21,7 @@ enum Flag {
     Help,
 }
 
+const CURRENT_DIR: &'static str = ".";
 const FLAG_PREFIX: &'static str = "-";
 const FLAG_SEPARATOR: &'static str = "--";
 const FLAG_RECURSIVE_SHORT: char = 'r';
@@ -40,7 +41,7 @@ pub(crate) fn parse() -> Config {
 
     set_working_directory();
 
-    let current_working_dir = env::current_dir()
+    env::current_dir()
         .unwrap_or_else(exit::os_err)
         .to_string_lossy()
         .to_string();
@@ -50,26 +51,15 @@ pub(crate) fn parse() -> Config {
         .and_then(|separator_index| args.get(separator_index + 1))
         .or_else(|| args.iter().find(|arg| !arg.starts_with(FLAG_PREFIX)))
         .map(|it| it.clone())
-        .unwrap_or(current_working_dir.clone());
+        .unwrap_or(CURRENT_DIR.into());
 
     if !is_dir(&directory) {
         exit::err(format!("error: {} is not a directory", directory))
     }
 
-    let same_path_as_cwd = path::Path::new(&directory.as_str())
-        .canonicalize()
-        .map(|full_path| {
-            path::Path::new(current_working_dir.as_str())
-                .canonicalize()
-                .map(|full_cwd| full_path == full_cwd)
-                .unwrap_or(false)
-        })
-        .ok()
-        .unwrap_or(false);
-
     let recursive = flags.contains(&Flag::Recursive);
     let verbose = flags.contains(&Flag::Verbose);
-    let use_paths = recursive || !same_path_as_cwd;
+    let use_paths = recursive || directory != CURRENT_DIR;
 
     Config {
         directory,

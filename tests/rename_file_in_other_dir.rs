@@ -24,7 +24,7 @@ fn rename_file_in_subdirectory() {
         to: target_file_name.as_str(),
     }];
 
-    test::init_with_subdirectory(test_name, SUBDIRECTORY, files);
+    test::init_with_subdirectories(test_name, vec![SUBDIRECTORY.to_string()], files);
     let args = vec![SUBDIRECTORY];
 
     // when
