@@ -21,11 +21,25 @@ fn main() {
     let tmp_file_path = write_dir_items_to_temp_file(&current_items);
     editor::open(&tmp_file_path);
     let target_file_names = read_dir_items_from_temp_file();
+
+    let parent_dirs_for_cleanup = if config.create_parent_dirs {
+        create_parent_dirs_and_get_parent_dirs_for_cleanup(&current_items, &target_file_names)
+    } else {
+        vec![]
+    };
+
     let renames = get_renames(&current_items, &target_file_names);
     if config.verbose {
         print_dir_items_to_rename(&renames);
     }
-    rename_files(config.clone(), &renames);
+    rename_files(&renames);
+
+    parent_dirs_for_cleanup.iter().for_each(|parent| {
+        fs::remove_dir(parent).unwrap_or_else(|_| {
+            eprintln!("warning: cannot clean up directory `{}`; not removing it recursively to avoid data loss", parent.display())
+        })
+    });
+
     delete_temp_file(&tmp_file_path);
 }
 
@@ -172,11 +186,7 @@ fn print_dir_items_to_rename(renames: &Vec<Rename>) {
         .for_each(|rename| println!("{} -> {}", rename.current, rename.target))
 }
 
-fn rename_files(config: Config, renames: &Vec<Rename>) {
-    if config.create_parent_dirs {
-        create_parent_dirs(renames);
-    }
-
+fn rename_files(renames: &Vec<Rename>) {
     renames
         .iter()
         .filter(|rename| rename.collision)
@@ -198,13 +208,31 @@ fn rename_files(config: Config, renames: &Vec<Rename>) {
         });
 }
 
-fn create_parent_dirs(renames: &Vec<Rename>) {
-    let mut parents: HashSet<PathBuf> = HashSet::new();
+fn create_parent_dirs_and_get_parent_dirs_for_cleanup(
+    current_file_names: &Vec<String>,
+    target_file_names: &Vec<String>,
+) -> Vec<PathBuf> {
+    let target_parents = unique_parents(target_file_names);
 
-    renames
+    target_parents
         .iter()
-        .map(|rename| {
-            let path = Path::new(rename.target.as_str());
+        .filter(|parent| !parent.try_exists().unwrap_or_else(exit::os_err))
+        .for_each(|parent| fs::create_dir_all(parent).unwrap_or_else(exit::os_err));
+
+    let current_parents = unique_parents(current_file_names);
+
+    current_parents
+        .difference(&target_parents)
+        .cloned()
+        .collect()
+}
+
+fn unique_parents(paths: &Vec<String>) -> HashSet<PathBuf> {
+    let mut parents: HashSet<PathBuf> = HashSet::new();
+    paths
+        .into_iter()
+        .map(|target| {
+            let path = Path::new(target.as_str());
             path.parent()
         })
         .flat_map(|parent| parent.into_iter())
@@ -212,11 +240,7 @@ fn create_parent_dirs(renames: &Vec<Rename>) {
         .for_each(|parent| {
             parents.insert(parent.to_path_buf());
         });
-
     parents
-        .iter()
-        .filter(|parent| !parent.try_exists().unwrap_or_else(exit::os_err))
-        .for_each(|parent| fs::create_dir_all(parent).unwrap_or_else(exit::os_err))
 }
 
 fn temporary_name(name: &String) -> String {

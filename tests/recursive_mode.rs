@@ -117,6 +117,9 @@ fn move_files_in_recursive_mode_and_automatically_create_subdirectory() {
     let files_subdirectory_2 = test::get_dir_items_in_subdirectory(test_name, subdirectory_2);
     assert_eq!(files_subdirectory_2, vec![filename_renamed]);
 
+    let subdirectories = test::get_dir_items(test_name);
+    assert_eq!(subdirectories, vec![subdirectory_2]);
+
     let actual_content = test::get_file_content(test_name, file_renamed.as_str());
     assert_eq!(actual_content, file_content.to_string());
 }

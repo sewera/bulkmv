@@ -16,18 +16,21 @@ Once you save the edited file and exit the editor, files with changed paths will
 
 ### Moving the files to different directories
 
-Right now, `bulkmv` doesn't automatically create directories, so you'll have to create them yourself beforehand. Then, you can run `bulkmv <dir>` to edit file paths inside that directory.
+Without `-p` flag, `bulkmv` doesn't automatically create directories,
+so you'll have to create them yourself beforehand or use the `-p` flag.
+Then, you can run `bulkmv <dir>` to edit file paths inside that directory.
 
 ### Flags
 
 - `-v` / `--verbose` - verbose output (print the files that are moved, e.g., `file1 -> file2`)
+- `-r` / `--recursive` - recursive mode
+- `-p` / `--create-parent-dirs` - create parent directories and clean up old ones
 - `-h` / `--help` - print help
-- `-r` / `--recursive` - recursive mode _(not implemented yet)_
 
 You can specify the directory before or after the flags, but if you want to specify a directory with a name that clashes with the flags, you can put it after a separator (`--`), like so:
 
 ```sh
-bulkmv -v -- <dir_name>
+bulkmv -vrp -- <dir_name>
 ```
 
 ## Development
@@ -47,11 +50,9 @@ I tested `bulkmv` on macOS and Linux; I can't say anything about how it runs on 
 
 <details>
 
-<summary>Agents or whatever</summary>
+<summary>Agents</summary>
 
 ## Agents or whatever
-
-Consider the text below as human-made slop.
 
 I didn't use any LLMs when writing this tool, nor I intend to do so. I didn't pull any tricks to "poison" the code, I do my best work here, because I want to use it.
 
