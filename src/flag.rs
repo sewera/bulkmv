@@ -10,6 +10,7 @@ pub(crate) struct Config {
     pub(crate) recursive: bool,
     pub(crate) verbose: bool,
     pub(crate) use_paths: bool,
+    pub(crate) create_parent_dirs: bool,
 }
 
 #[derive(Eq, PartialEq)]
@@ -18,6 +19,7 @@ enum Flag {
     Separator,
     Recursive,
     Verbose,
+    CreateParentDirs,
     Help,
 }
 
@@ -28,6 +30,8 @@ const FLAG_RECURSIVE_SHORT: char = 'r';
 const FLAG_RECURSIVE_LONG: &'static str = "--recursive";
 const FLAG_VERBOSE_SHORT: char = 'v';
 const FLAG_VERBOSE_LONG: &'static str = "--verbose";
+const FLAG_CREATE_PARENT_DIRS_SHORT: char = 'p';
+const FLAG_CREATE_PARENT_DIRS_LONG: &'static str = "--create-parent-dirs";
 const FLAG_HELP_SHORT: char = 'h';
 const FLAG_HELP_LONG: &'static str = "--help";
 
@@ -60,11 +64,13 @@ pub(crate) fn parse() -> Config {
     let recursive = flags.contains(&Flag::Recursive);
     let verbose = flags.contains(&Flag::Verbose);
     let use_paths = recursive || directory != CURRENT_DIR;
+    let create_parent_dirs = flags.contains(&Flag::CreateParentDirs);
 
     Config {
         directory,
         recursive,
         verbose,
+        create_parent_dirs,
         use_paths,
     }
 }
@@ -76,6 +82,7 @@ fn parse_flags(args: &Vec<String>) -> Vec<Flag> {
         .flat_map(|arg| match arg.as_str() {
             FLAG_VERBOSE_LONG => vec![Flag::Verbose],
             FLAG_RECURSIVE_LONG => vec![Flag::Recursive],
+            FLAG_CREATE_PARENT_DIRS_LONG => vec![Flag::CreateParentDirs],
             FLAG_HELP_LONG => vec![Flag::Help],
             FLAG_SEPARATOR => vec![Flag::Separator],
             s => parse_short_flags(s),
@@ -108,6 +115,7 @@ fn parse_short_flags(arg: &str) -> Vec<Flag> {
         .map(|short_flag| match short_flag {
             FLAG_VERBOSE_SHORT => Flag::Verbose,
             FLAG_RECURSIVE_SHORT => Flag::Recursive,
+            FLAG_CREATE_PARENT_DIRS_SHORT => Flag::CreateParentDirs,
             FLAG_HELP_SHORT => Flag::Help,
             s => Flag::Unknown(s.to_string()),
         })

@@ -25,7 +25,7 @@ fn main() {
     if config.verbose {
         print_dir_items_to_rename(&renames);
     }
-    rename_files(&renames);
+    rename_files(config.clone(), &renames);
     delete_temp_file(&tmp_file_path);
 }
 
@@ -172,7 +172,11 @@ fn print_dir_items_to_rename(renames: &Vec<Rename>) {
         .for_each(|rename| println!("{} -> {}", rename.current, rename.target))
 }
 
-fn rename_files(renames: &Vec<Rename>) {
+fn rename_files(config: Config, renames: &Vec<Rename>) {
+    if config.create_parent_dirs {
+        create_parent_dirs(renames);
+    }
+
     renames
         .iter()
         .filter(|rename| rename.collision)
@@ -192,6 +196,27 @@ fn rename_files(renames: &Vec<Rename>) {
         .for_each(|rename| {
             fs::rename(temporary_name(&rename.current), &rename.target).unwrap_or_else(exit::os_err)
         });
+}
+
+fn create_parent_dirs(renames: &Vec<Rename>) {
+    let mut parents: HashSet<PathBuf> = HashSet::new();
+
+    renames
+        .iter()
+        .map(|rename| {
+            let path = Path::new(rename.target.as_str());
+            path.parent()
+        })
+        .flat_map(|parent| parent.into_iter())
+        .filter(|parent| !parent.is_empty() && *parent != Path::new("."))
+        .for_each(|parent| {
+            parents.insert(parent.to_path_buf());
+        });
+
+    parents
+        .iter()
+        .filter(|parent| !parent.try_exists().unwrap_or_else(exit::os_err))
+        .for_each(|parent| fs::create_dir_all(parent).unwrap_or_else(exit::os_err))
 }
 
 fn temporary_name(name: &String) -> String {

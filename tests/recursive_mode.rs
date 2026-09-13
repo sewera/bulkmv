@@ -3,6 +3,8 @@ mod test;
 #[test]
 fn move_files_in_recursive_mode() {
     // given
+    let test_name = "move_files_in_recursive_mode";
+
     let subdirectory_1 = "subdirectory_1";
     let subdirectory_2 = "subdirectory_2";
 
@@ -20,8 +22,6 @@ fn move_files_in_recursive_mode() {
     let filename_2_1_renamed = "file_2_1_renamed";
     let file_2_1_renamed = format!("{}/{}", subdirectory_1, filename_2_1_renamed);
     let file_2_1_content = "file_2_1 test content";
-
-    let test_name = "move_files_in_recursive_mode";
 
     let files = vec![
         test::File {
@@ -82,4 +82,41 @@ fn move_files_in_recursive_mode() {
         let actual_content = test::get_file_content(test_name, renamed_file.as_str());
         assert_eq!(actual_content, expected_content.to_string());
     });
+}
+
+#[test]
+fn move_files_in_recursive_mode_and_automatically_create_subdirectory() {
+    // given
+    let test_name = "move_files_in_recursive_mode_and_automatically_create_subdirectory";
+
+    let subdirectory_1 = "subdirectory_1";
+    let subdirectory_2 = "subdirectory_2";
+
+    let file = format!("./{}/{}", subdirectory_1, "file");
+    let filename_renamed = "file_renamed";
+    let file_renamed = format!("{}/{}", subdirectory_2, filename_renamed);
+    let file_content = "file test content";
+
+    let files = vec![test::File {
+        name: file.as_str(),
+        content: file_content,
+    }];
+
+    let renames = vec![test::Rename {
+        from: file.as_str(),
+        to: file_renamed.as_str(),
+    }];
+
+    test::init_with_subdirectories(test_name, vec![subdirectory_1.to_string()], files);
+    let args = vec!["-rp", "."];
+
+    // when
+    test::bulkmv(test_name, args, renames);
+
+    // then
+    let files_subdirectory_2 = test::get_dir_items_in_subdirectory(test_name, subdirectory_2);
+    assert_eq!(files_subdirectory_2, vec![filename_renamed]);
+
+    let actual_content = test::get_file_content(test_name, file_renamed.as_str());
+    assert_eq!(actual_content, file_content.to_string());
 }
