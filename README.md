@@ -7,7 +7,8 @@ Move files in bulk by editing their paths in a file.
 ### Basic usage
 
 Go to the desired directory and run `bulkmv`.
-It will create a `BULKMV_FILE` and open an editor defined in `EDITOR` environment variable (or `vi` if the variable is not defined).
+It will create a `BULKMV_FILE` and open an editor defined in `VISUAL` or `EDITOR` environment variable
+(or `vi` on Unix-like / `notepad.exe` on Windows if the variable is not defined).
 Once you save the edited file and exit the editor, files with changed paths will be moved / renamed.
 
 ### Swapping the filenames
@@ -24,7 +25,7 @@ Then, you can run `bulkmv <dir>` to edit file paths inside that directory.
 
 - `-v` / `--verbose` - verbose output (print the files that are moved, e.g., `file1 -> file2`)
 - `-r` / `--recursive` - recursive mode
-- `-p` / `--create-parent-dirs` - create parent directories and clean up old ones
+- `-p` / `--create-parent-dirs` - create parent directories
 - `-h` / `--help` - print help
 
 You can specify the directory before or after the flags, but if you want to specify a directory with a name that clashes with the flags, you can put it after a separator (`--`), like so:
@@ -44,7 +45,8 @@ cargo build -r # build the release version (with debug messages stripped)
 cargo test     # run all tests
 ```
 
-I tested `bulkmv` on macOS and Linux; I can't say anything about how it runs on Windows.
+I tested `bulkmv` on macOS and Linux.
+It runs on Windows but I don't use it day-to-day, so I won't test every change on it.
 
 ---
 

@@ -22,23 +22,15 @@ fn main() {
     editor::open(&tmp_file_path);
     let target_file_names = read_dir_items_from_temp_file();
 
-    let parent_dirs_for_cleanup = if config.create_parent_dirs {
-        create_parent_dirs_and_get_parent_dirs_for_cleanup(&current_items, &target_file_names)
-    } else {
-        vec![]
-    };
+    if config.create_parent_dirs {
+        create_parent_dirs(&target_file_names);
+    }
 
     let renames = get_renames(&current_items, &target_file_names);
     if config.verbose {
         print_dir_items_to_rename(&renames);
     }
     rename_files(&renames);
-
-    parent_dirs_for_cleanup.iter().for_each(|parent| {
-        fs::remove_dir(parent).unwrap_or_else(|_| {
-            eprintln!("warning: cannot clean up directory `{}`; not removing it recursively to avoid data loss", parent.display())
-        })
-    });
 
     delete_temp_file(&tmp_file_path);
 }
@@ -121,7 +113,11 @@ fn list_dir_recursive(path: PathBuf) -> Vec<DirEntry> {
         .flat_map(|file| {
             let file_type = file.file_type().unwrap_or_else(exit::os_err);
             if file_type.is_dir() {
-                list_dir_recursive(file.path())
+                let path = file.path();
+                vec![file]
+                    .into_iter()
+                    .chain(list_dir_recursive(path).into_iter())
+                    .collect()
             } else {
                 vec![file]
             }
@@ -183,7 +179,7 @@ fn read_dir_items_from_temp_file() -> Vec<String> {
 fn print_dir_items_to_rename(renames: &Vec<Rename>) {
     renames
         .iter()
-        .for_each(|rename| println!("{} -> {}", rename.current, rename.target))
+        .for_each(|rename| println!("{} => {}", rename.current, rename.target))
 }
 
 fn rename_files(renames: &Vec<Rename>) {
@@ -208,23 +204,13 @@ fn rename_files(renames: &Vec<Rename>) {
         });
 }
 
-fn create_parent_dirs_and_get_parent_dirs_for_cleanup(
-    current_file_names: &Vec<String>,
-    target_file_names: &Vec<String>,
-) -> Vec<PathBuf> {
+fn create_parent_dirs(target_file_names: &Vec<String>) {
     let target_parents = unique_parents(target_file_names);
 
     target_parents
         .iter()
         .filter(|parent| !parent.try_exists().unwrap_or_else(exit::os_err))
         .for_each(|parent| fs::create_dir_all(parent).unwrap_or_else(exit::os_err));
-
-    let current_parents = unique_parents(current_file_names);
-
-    current_parents
-        .difference(&target_parents)
-        .cloned()
-        .collect()
 }
 
 fn unique_parents(paths: &Vec<String>) -> HashSet<PathBuf> {

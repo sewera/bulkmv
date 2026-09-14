@@ -40,7 +40,7 @@ fn swap_two_file_names() {
     // then
     assert_eq!(
         output.trim(),
-        format!("{TEST_FILE_1} -> {TEST_FILE_2}\n{TEST_FILE_2} -> {TEST_FILE_1}")
+        format!("{TEST_FILE_1} => {TEST_FILE_2}\n{TEST_FILE_2} => {TEST_FILE_1}")
     );
 
     let file1_content = test::get_file_content(test_name, TEST_FILE_2);

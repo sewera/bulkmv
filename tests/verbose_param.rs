@@ -84,7 +84,7 @@ mod verbose_output {
         // then
         assert_eq!(
             output.trim(),
-            format!("{TEST_FILE_NAME} -> {TEST_FILE_NAME_RENAMED}")
+            format!("{TEST_FILE_NAME} => {TEST_FILE_NAME_RENAMED}")
         );
     }
 }

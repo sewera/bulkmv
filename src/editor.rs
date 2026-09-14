@@ -16,9 +16,13 @@ pub fn open(file_path: &String) {
     }
 }
 
-fn parse_command(cmdline: String) -> (String, Vec<String>) {
-    const DEFAULT_EDITOR: &'static str = "vi";
+#[cfg(unix)]
+const DEFAULT_EDITOR: &'static str = "vi";
 
+#[cfg(windows)]
+const DEFAULT_EDITOR: &'static str = "notepad.exe";
+
+fn parse_command(cmdline: String) -> (String, Vec<String>) {
     if cmdline.is_empty() {
         return (DEFAULT_EDITOR.to_owned(), Vec::new());
     }

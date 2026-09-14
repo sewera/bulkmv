@@ -118,8 +118,36 @@ fn move_files_in_recursive_mode_and_automatically_create_subdirectory() {
     assert_eq!(files_subdirectory_2, vec![filename_renamed]);
 
     let subdirectories = test::get_dir_items(test_name);
-    assert_eq!(subdirectories, vec![subdirectory_2]);
+    assert_eq!(subdirectories, vec![subdirectory_1, subdirectory_2]);
 
     let actual_content = test::get_file_content(test_name, file_renamed.as_str());
     assert_eq!(actual_content, file_content.to_string());
+}
+
+#[test]
+fn move_files_in_recursive_mode_rename_subdirectory() {
+    // given
+    let test_name = "move_files_in_recursive_mode_rename_subdirectory";
+
+    let subdirectory_1 = "subdirectory_1";
+    let subdirectory_2 = "subdirectory_2";
+
+    let files = vec![];
+
+    let from = format!("./{subdirectory_1}");
+    let to = format!("./{subdirectory_2}");
+    let renames = vec![test::Rename {
+        from: from.as_str(),
+        to: to.as_str(),
+    }];
+
+    test::init_with_subdirectories(test_name, vec![subdirectory_1.to_string()], files);
+    let args = vec!["-rp", "."];
+
+    // when
+    test::bulkmv(test_name, args, renames);
+
+    // then
+    let subdirectories = test::get_dir_items(test_name);
+    assert_eq!(subdirectories, vec![subdirectory_2]);
 }
