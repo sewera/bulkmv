@@ -236,7 +236,7 @@ fn unique_parents(paths: &Vec<String>) -> HashSet<PathBuf> {
             path.parent()
         })
         .flat_map(|parent| parent.into_iter())
-        .filter(|parent| !parent.is_empty() && *parent != Path::new("."))
+        .filter(|parent| *parent != Path::new("") && *parent != Path::new(".")) // TODO: check if this filter can be simplified
         .for_each(|parent| {
             parents.insert(parent.to_path_buf());
         });
