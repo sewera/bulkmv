@@ -3,7 +3,7 @@ use std::{env, process};
 
 pub fn open(file_path: &String) {
     debug!("opening editor: {}", file_path);
-    let editor_cmd = env::var("EDITOR").unwrap_or(String::new());
+    let editor_cmd = editor();
     let (cmd, args) = parse_command(editor_cmd);
     let exit_status = process::Command::new(cmd)
         .args(args)
@@ -16,6 +16,17 @@ pub fn open(file_path: &String) {
     }
 }
 
+fn editor() -> String {
+    const ENV_VISUAL: &'static str = "VISUAL";
+    const ENV_EDITOR: &'static str = "EDITOR";
+    env::var(ENV_VISUAL)
+        .ok()
+        .filter(|s| !s.is_empty())
+        .or(env::var(ENV_EDITOR).ok())
+        .filter(|s| !s.is_empty())
+        .unwrap_or(DEFAULT_EDITOR.into())
+}
+
 #[cfg(unix)]
 const DEFAULT_EDITOR: &'static str = "vi";
 
@@ -23,10 +34,6 @@ const DEFAULT_EDITOR: &'static str = "vi";
 const DEFAULT_EDITOR: &'static str = "notepad.exe";
 
 fn parse_command(cmdline: String) -> (String, Vec<String>) {
-    if cmdline.is_empty() {
-        return (DEFAULT_EDITOR.to_owned(), Vec::new());
-    }
-
     let elements: Vec<_> = cmdline.split_whitespace().collect();
     if elements.is_empty() {
         return (DEFAULT_EDITOR.to_owned(), Vec::new());
